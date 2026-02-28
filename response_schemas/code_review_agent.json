@@ -4,9 +4,12 @@
   "accessor": "json",
   "has_module_outputs": false,
   "schema": {
-    "overall_score": "number (0-100)",
+    "overall_score": "number (0-100) - original code quality score",
+    "fixed_score": "number (0-100) - fixed code quality score",
     "summary": "string",
     "language_detected": "string",
+    "fixed_code": "string - the complete corrected version of the code with all fixes applied",
+    "fix_changelog": "array of {change_type, title, description, before_snippet, after_snippet}",
     "security_issues": "array of {title, severity, description, line_reference, fix_suggestion}",
     "performance_issues": "array of {title, impact, description, line_reference, fix_suggestion}",
     "style_issues": "array of {title, category, description, line_reference, fix_suggestion}",

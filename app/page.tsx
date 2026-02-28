@@ -10,6 +10,7 @@ import { FiRefreshCw, FiShield } from 'react-icons/fi'
 import Header from './sections/Header'
 import CodeInput from './sections/CodeInput'
 import ReviewDashboard from './sections/ReviewDashboard'
+import FixedCodeView from './sections/FixedCodeView'
 
 // --- Types ---
 
@@ -57,10 +58,21 @@ interface TopPriority {
   reason: string
 }
 
+interface FixChangelog {
+  change_type: string
+  title: string
+  description: string
+  before_snippet: string
+  after_snippet: string
+}
+
 interface CodeReviewResult {
   overall_score: number
+  fixed_score: number
   summary: string
   language_detected: string
+  fixed_code: string
+  fix_changelog: FixChangelog[]
   security_issues: SecurityIssue[]
   performance_issues: PerformanceIssue[]
   style_issues: StyleIssue[]
@@ -74,20 +86,135 @@ const AGENT_ID = '69a2854ca96eb35aa78a9ccd'
 
 const SAMPLE_RESULT: CodeReviewResult = {
   overall_score: 52,
-  summary: 'The code has several security vulnerabilities including SQL injection risks and hardcoded credentials. Performance can be improved by optimizing database queries and adding caching. Multiple style violations were detected in naming conventions and error handling.',
+  fixed_score: 94,
+  summary: 'The code had several critical security vulnerabilities and performance issues. All have been automatically fixed: SQL injection patched with parameterized queries, hardcoded secrets moved to environment variables, N+1 queries resolved with batch fetching, and proper error handling added throughout.',
   language_detected: 'JavaScript/TypeScript',
+  fixed_code: `const express = require('express');
+const bcrypt = require('bcrypt');
+const { z } = require('zod');
+const db = require('./db');
+
+// FIX: Secrets moved to environment variables
+const API_SECRET = process.env.API_SECRET;
+if (!API_SECRET) throw new Error('API_SECRET env var required');
+
+// FIX: Input validation schema
+const registerSchema = z.object({
+  email: z.string().email().max(255),
+  password: z.string().min(8).max(128),
+});
+
+app.post('/register', async (req, res) => {
+  try {
+    // FIX: Validate input before processing
+    const { email, password } = registerSchema.parse(req.body);
+
+    // FIX: Hash password before storing
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // FIX: Parameterized query prevents SQL injection
+    const result = await db.query(
+      'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING id',
+      [email, hashedPassword]
+    );
+    res.json({ success: true, userId: result.rows[0].id });
+  } catch (err) {
+    // FIX: Proper error handling
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Invalid input', details: err.errors });
+    }
+    console.error('Registration error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/orders', async (req, res) => {
+  try {
+    const orders = await db.query('SELECT * FROM orders');
+
+    // FIX: Batch query instead of N+1 loop
+    const userIds = orders.rows.map(o => o.userId);
+    const users = await db.query(
+      'SELECT * FROM users WHERE id = ANY($1)',
+      [userIds]
+    );
+
+    // FIX: Map lookup for O(1) access instead of nested loops
+    const userMap = new Map(users.rows.map(u => [u.id, u]));
+    const enriched = orders.rows.map(order => ({
+      ...order,
+      userName: userMap.get(order.userId)?.name ?? 'Unknown',
+    }));
+
+    res.json(enriched);
+  } catch (err) {
+    console.error('Orders fetch error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});`,
+  fix_changelog: [
+    {
+      change_type: 'security',
+      title: 'SQL Injection Fixed',
+      description: 'Replaced string concatenation in SQL queries with parameterized queries ($1, $2 placeholders) to prevent SQL injection attacks.',
+      before_snippet: `db.query("INSERT INTO users VALUES ('" + email + "')")`,
+      after_snippet: `db.query('INSERT INTO users VALUES ($1, $2)', [email, hashedPassword])`,
+    },
+    {
+      change_type: 'security',
+      title: 'Hardcoded Secret Removed',
+      description: 'Moved the API secret from hardcoded string to environment variable with a startup check to ensure it is set.',
+      before_snippet: `const API_SECRET = 'sk-abc123-super-secret-key';`,
+      after_snippet: `const API_SECRET = process.env.API_SECRET;\nif (!API_SECRET) throw new Error('API_SECRET env var required');`,
+    },
+    {
+      change_type: 'security',
+      title: 'Input Validation Added',
+      description: 'Added Zod schema validation for email and password fields to prevent malformed data from reaching the database.',
+      before_snippet: `const { email, password } = req.body;`,
+      after_snippet: `const registerSchema = z.object({\n  email: z.string().email().max(255),\n  password: z.string().min(8).max(128),\n});\nconst { email, password } = registerSchema.parse(req.body);`,
+    },
+    {
+      change_type: 'performance',
+      title: 'N+1 Query Eliminated',
+      description: 'Replaced the loop that made individual database queries for each order with a single batch query using ANY($1), reducing database round trips from N+1 to 2.',
+      before_snippet: `for (const order of orders) {\n  const user = await db.query('SELECT * FROM users WHERE id = ' + order.user_id);\n}`,
+      after_snippet: `const userIds = orders.rows.map(o => o.userId);\nconst users = await db.query('SELECT * FROM users WHERE id = ANY($1)', [userIds]);`,
+    },
+    {
+      change_type: 'performance',
+      title: 'Map Lookup for O(1) Access',
+      description: 'Used a Map data structure for user lookups instead of array scanning, reducing enrichment from O(n*m) to O(n+m).',
+      before_snippet: `enriched.push({ ...order, user_name: user[0].name });`,
+      after_snippet: `const userMap = new Map(users.rows.map(u => [u.id, u]));\nconst enriched = orders.rows.map(order => ({\n  ...order,\n  userName: userMap.get(order.userId)?.name ?? 'Unknown',\n}));`,
+    },
+    {
+      change_type: 'style',
+      title: 'Error Handling Added',
+      description: 'Wrapped all async route handlers in try-catch blocks with proper error responses to the client and server-side logging.',
+      before_snippet: `app.post('/register', async (req, res) => {\n  const result = await db.query(...);\n  res.json(result);\n});`,
+      after_snippet: `app.post('/register', async (req, res) => {\n  try {\n    const result = await db.query(...);\n    res.json(result);\n  } catch (err) {\n    console.error('Error:', err);\n    res.status(500).json({ error: 'Internal server error' });\n  }\n});`,
+    },
+    {
+      change_type: 'style',
+      title: 'Unused Import Removed',
+      description: 'Removed the unused lodash import that was adding unnecessary bundle size. Replaced with only the required dependencies.',
+      before_snippet: `const _ = require('lodash');`,
+      after_snippet: `// Removed unused lodash import`,
+    },
+  ],
   security_issues: [
-    { title: 'SQL Injection Vulnerability', severity: 'Critical', description: 'User input is directly concatenated into SQL query string on line 45 without parameterization or sanitization.', line_reference: 'Line 45', fix_suggestion: 'const result = await db.query("SELECT * FROM users WHERE id = $1", [userId]);' },
-    { title: 'Hardcoded API Secret', severity: 'High', description: 'API secret key is hardcoded in the source file. This exposes sensitive credentials if the code is committed to version control.', line_reference: 'Line 12', fix_suggestion: 'const API_SECRET = process.env.API_SECRET;\nif (!API_SECRET) throw new Error("API_SECRET env var required");' },
-    { title: 'Missing Input Validation', severity: 'Medium', description: 'The email parameter in the registration handler is not validated for format or length before being stored.', line_reference: 'Line 78', fix_suggestion: 'import { z } from "zod";\nconst emailSchema = z.string().email().max(255);\nconst validEmail = emailSchema.parse(req.body.email);' },
+    { title: 'SQL Injection Vulnerability', severity: 'Critical', description: 'User input is directly concatenated into SQL query string without parameterization or sanitization.', line_reference: 'Line 9-10', fix_suggestion: 'const result = await db.query("SELECT * FROM users WHERE id = $1", [userId]);' },
+    { title: 'Hardcoded API Secret', severity: 'High', description: 'API secret key is hardcoded in the source file. This exposes sensitive credentials if the code is committed to version control.', line_reference: 'Line 5', fix_suggestion: 'const API_SECRET = process.env.API_SECRET;\nif (!API_SECRET) throw new Error("API_SECRET env var required");' },
+    { title: 'Missing Input Validation', severity: 'Medium', description: 'The email parameter in the registration handler is not validated for format or length before being stored.', line_reference: 'Line 8', fix_suggestion: 'import { z } from "zod";\nconst emailSchema = z.string().email().max(255);\nconst validEmail = emailSchema.parse(req.body.email);' },
   ],
   performance_issues: [
-    { title: 'N+1 Database Query', severity: 'High', impact: 'High', description: 'Fetching user details inside a loop causes N+1 query problem. Each iteration triggers a separate database call.', line_reference: 'Lines 60-68', fix_suggestion: 'const userIds = orders.map(o => o.userId);\nconst users = await db.query("SELECT * FROM users WHERE id = ANY($1)", [userIds]);' },
-    { title: 'Unoptimized Array Search', severity: 'Medium', impact: 'Medium', description: 'Using Array.find() inside a nested loop creates O(n*m) complexity when a Map lookup would be O(n+m).', line_reference: 'Line 92', fix_suggestion: 'const userMap = new Map(users.map(u => [u.id, u]));\nconst user = userMap.get(order.userId);' },
+    { title: 'N+1 Database Query', impact: 'High', description: 'Fetching user details inside a loop causes N+1 query problem. Each iteration triggers a separate database call.', line_reference: 'Lines 16-19', fix_suggestion: 'const userIds = orders.map(o => o.userId);\nconst users = await db.query("SELECT * FROM users WHERE id = ANY($1)", [userIds]);' },
+    { title: 'Unoptimized Array Search', impact: 'Medium', description: 'Using Array.find() inside a nested loop creates O(n*m) complexity when a Map lookup would be O(n+m).', line_reference: 'Line 18', fix_suggestion: 'const userMap = new Map(users.map(u => [u.id, u]));\nconst user = userMap.get(order.userId);' },
   ],
   style_issues: [
-    { title: 'Inconsistent Naming Convention', category: 'naming', description: 'Mix of camelCase and snake_case variable names. The project should use a consistent naming convention.', line_reference: 'Lines 15, 32, 48', fix_suggestion: 'Rename user_name to userName, api_key to apiKey for consistency with JavaScript conventions.' },
-    { title: 'Missing Error Handling', category: 'error-handling', description: 'The async database call has no try-catch block and no error response to the client.', line_reference: 'Line 55', fix_suggestion: 'try {\n  const result = await db.query(...);\n  res.json(result);\n} catch (err) {\n  console.error("DB error:", err);\n  res.status(500).json({ error: "Internal server error" });\n}' },
+    { title: 'Inconsistent Naming Convention', category: 'naming', description: 'Mix of camelCase and snake_case variable names. The project should use a consistent naming convention.', line_reference: 'Lines 18, 19', fix_suggestion: 'Rename user_name to userName, api_key to apiKey for consistency with JavaScript conventions.' },
+    { title: 'Missing Error Handling', category: 'error-handling', description: 'The async database call has no try-catch block and no error response to the client.', line_reference: 'Lines 7-12', fix_suggestion: 'try {\n  const result = await db.query(...);\n  res.json(result);\n} catch (err) {\n  console.error("DB error:", err);\n  res.status(500).json({ error: "Internal server error" });\n}' },
     { title: 'Unused Import', category: 'imports', description: 'The "lodash" module is imported but never used in the file. This adds unnecessary bundle size.', line_reference: 'Line 3', fix_suggestion: 'Remove the unused import: // import _ from "lodash"' },
   ],
   issue_counts: {
@@ -175,15 +302,18 @@ export default function Page() {
     setActiveAgentId(AGENT_ID)
 
     try {
-      const message = `Review the following ${selectedLanguage} code for security vulnerabilities, performance issues, and style guide adherence:\n\n${code}`
+      const message = `Review the following ${selectedLanguage} code for security vulnerabilities, performance issues, and style guide adherence. Identify all issues, then generate a completely fixed version of the code with all security and performance problems resolved:\n\n${code}`
       const result = await callAIAgent(message, AGENT_ID)
 
       if (result.success && result?.response?.result) {
         const data = result.response.result as CodeReviewResult
         setReviewResult({
           overall_score: typeof data?.overall_score === 'number' ? data.overall_score : 0,
+          fixed_score: typeof data?.fixed_score === 'number' ? data.fixed_score : 0,
           summary: data?.summary ?? 'No summary available',
           language_detected: data?.language_detected ?? selectedLanguage,
+          fixed_code: typeof data?.fixed_code === 'string' ? data.fixed_code : '',
+          fix_changelog: Array.isArray(data?.fix_changelog) ? data.fix_changelog : [],
           security_issues: Array.isArray(data?.security_issues) ? data.security_issues : [],
           performance_issues: Array.isArray(data?.performance_issues) ? data.performance_issues : [],
           style_issues: Array.isArray(data?.style_issues) ? data.style_issues : [],
@@ -269,16 +399,27 @@ export default function Page() {
             error={error}
           />
         ) : (
-          <ReviewDashboard
-            overallScore={displayResult.overall_score}
-            summary={displayResult.summary}
-            languageDetected={displayResult.language_detected}
-            securityIssues={displayResult.security_issues}
-            performanceIssues={displayResult.performance_issues}
-            styleIssues={displayResult.style_issues}
-            issueCounts={displayResult.issue_counts}
-            topPriorities={displayResult.top_priorities}
-          />
+          <>
+            <ReviewDashboard
+              overallScore={displayResult.overall_score}
+              fixedScore={displayResult.fixed_score}
+              summary={displayResult.summary}
+              languageDetected={displayResult.language_detected}
+              securityIssues={displayResult.security_issues}
+              performanceIssues={displayResult.performance_issues}
+              styleIssues={displayResult.style_issues}
+              issueCounts={displayResult.issue_counts}
+              topPriorities={displayResult.top_priorities}
+            />
+            {displayResult.fixed_code && (
+              <FixedCodeView
+                fixedCode={displayResult.fixed_code}
+                fixChangelog={displayResult.fix_changelog}
+                originalScore={displayResult.overall_score}
+                fixedScore={displayResult.fixed_score}
+              />
+            )}
+          </>
         )}
 
         {/* Agent Status */}
@@ -291,7 +432,7 @@ export default function Page() {
                 </div>
                 <div>
                   <p className="text-xs font-medium text-gray-300">CodeGuard Code Review Agent</p>
-                  <p className="text-xs text-gray-500">Security, performance, and style analysis</p>
+                  <p className="text-xs text-gray-500">Analyze, detect, and auto-fix code issues</p>
                 </div>
               </div>
               <Badge variant="outline" className={activeAgentId === AGENT_ID ? 'text-xs border-amber-500/30 text-amber-400 bg-amber-500/10' : 'text-xs border-emerald-500/30 text-emerald-400 bg-emerald-500/10'}>

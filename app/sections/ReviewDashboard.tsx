@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { FiShield, FiZap, FiCode, FiChevronDown, FiChevronUp, FiAlertTriangle, FiCheckCircle, FiAlertCircle } from 'react-icons/fi'
+import { FiShield, FiZap, FiCode, FiChevronDown, FiChevronUp, FiAlertTriangle, FiCheckCircle, FiAlertCircle, FiArrowRight, FiTrendingUp } from 'react-icons/fi'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -56,6 +56,7 @@ interface TopPriority {
 
 interface ReviewDashboardProps {
   overallScore: number
+  fixedScore: number
   summary: string
   languageDetected: string
   securityIssues: SecurityIssue[]
@@ -164,6 +165,7 @@ function IssueCard({ title, badge, badgeClass, description, lineRef, fixSuggesti
 
 export default function ReviewDashboard({
   overallScore,
+  fixedScore,
   summary,
   languageDetected,
   securityIssues,
@@ -173,29 +175,51 @@ export default function ReviewDashboard({
   topPriorities,
 }: ReviewDashboardProps) {
   const safeScore = typeof overallScore === 'number' ? overallScore : 0
+  const safeFixedScore = typeof fixedScore === 'number' ? fixedScore : 0
+  const improvement = safeFixedScore - safeScore
   const totalIssues = (issueCounts?.security_total ?? 0) + (issueCounts?.performance_total ?? 0) + (issueCounts?.style_total ?? 0)
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
       {/* Score Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Original Score */}
         <Card className={cn('border bg-gray-900/50', scoreBorderColor(safeScore))}>
-          <CardContent className="p-6 flex items-center gap-5">
-            <div className={cn('w-20 h-20 rounded-full flex items-center justify-center border-[3px]', scoreBorderColor(safeScore), scoreBgColor(safeScore))}>
-              <span className={cn('text-2xl font-bold', scoreColor(safeScore))}>{safeScore}</span>
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className={cn('w-16 h-16 rounded-full flex items-center justify-center border-[3px]', scoreBorderColor(safeScore), scoreBgColor(safeScore))}>
+              <span className={cn('text-xl font-bold', scoreColor(safeScore))}>{safeScore}</span>
             </div>
-            <div className="space-y-1">
-              <p className={cn('text-lg font-semibold', scoreColor(safeScore))}>{scoreLabel(safeScore)}</p>
-              <p className="text-xs text-gray-400">Overall Score</p>
+            <div className="space-y-0.5">
+              <p className={cn('text-base font-semibold', scoreColor(safeScore))}>{scoreLabel(safeScore)}</p>
+              <p className="text-xs text-gray-400">Original Score</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Fixed Score */}
+        <Card className={cn('border bg-gray-900/50', scoreBorderColor(safeFixedScore))}>
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className={cn('w-16 h-16 rounded-full flex items-center justify-center border-[3px]', scoreBorderColor(safeFixedScore), scoreBgColor(safeFixedScore))}>
+              <span className={cn('text-xl font-bold', scoreColor(safeFixedScore))}>{safeFixedScore}</span>
+            </div>
+            <div className="space-y-0.5">
+              <p className={cn('text-base font-semibold', scoreColor(safeFixedScore))}>{scoreLabel(safeFixedScore)}</p>
+              <p className="text-xs text-gray-400">After Auto-Fix</p>
+              {improvement > 0 && (
+                <div className="flex items-center gap-1">
+                  <FiTrendingUp className="w-3 h-3 text-emerald-400" />
+                  <span className="text-xs font-medium text-emerald-400">+{improvement} pts</span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
         <Card className="border border-gray-800 bg-gray-900/50">
-          <CardContent className="p-6 space-y-2">
+          <CardContent className="p-5 space-y-2">
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <FiAlertTriangle className="w-4 h-4" />
-              <span>Total Issues</span>
+              <span>Issues Found</span>
             </div>
             <p className="text-3xl font-bold text-white">{totalIssues}</p>
             <div className="flex items-center gap-2 flex-wrap">
@@ -207,10 +231,10 @@ export default function ReviewDashboard({
         </Card>
 
         <Card className="border border-gray-800 bg-gray-900/50">
-          <CardContent className="p-6 space-y-2">
+          <CardContent className="p-5 space-y-2">
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <FiCode className="w-4 h-4" />
-              <span>Language Detected</span>
+              <span>Language</span>
             </div>
             <p className="text-lg font-semibold text-white">{languageDetected || 'Unknown'}</p>
             <p className="text-xs text-gray-400 line-clamp-2">{summary || 'No summary available'}</p>
