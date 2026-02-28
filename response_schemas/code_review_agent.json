@@ -1,0 +1,16 @@
+{
+  "agent_name": "CodeGuard Code Review Agent",
+  "agent_type": "json",
+  "accessor": "json",
+  "has_module_outputs": false,
+  "schema": {
+    "overall_score": "number (0-100)",
+    "summary": "string",
+    "language_detected": "string",
+    "security_issues": "array of {title, severity, description, line_reference, fix_suggestion}",
+    "performance_issues": "array of {title, impact, description, line_reference, fix_suggestion}",
+    "style_issues": "array of {title, category, description, line_reference, fix_suggestion}",
+    "issue_counts": "{security_total, security_critical, security_high, security_medium, security_low, performance_total, performance_high, performance_medium, performance_low, style_total}",
+    "top_priorities": "array of {rank, title, category, reason}"
+  }
+}

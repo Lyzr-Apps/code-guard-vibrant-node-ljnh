@@ -1,0 +1,112 @@
+{
+  "agent_name": "CodeGuard Code Review Agent",
+  "agent_id": "69a2854ca96eb35aa78a9ccd",
+  "description": "AI-powered code review agent that analyzes code for security vulnerabilities, performance issues, and style guide adherence across JavaScript/TypeScript, Python, and Java/Kotlin.",
+  "agent_type": "json",
+  "accessor": "result",
+  "auto_generated": true,
+  "response_schema": {
+    "overall_score": "number",
+    "summary": "string",
+    "language_detected": "string",
+    "security_issues": [
+      {
+        "title": "string",
+        "severity": "string",
+        "description": "string",
+        "line_reference": "string",
+        "fix_suggestion": "string"
+      }
+    ],
+    "performance_issues": [
+      {
+        "title": "string",
+        "impact": "string",
+        "description": "string",
+        "line_reference": "string",
+        "fix_suggestion": "string"
+      }
+    ],
+    "style_issues": [
+      {
+        "title": "string",
+        "category": "string",
+        "description": "string",
+        "line_reference": "string",
+        "fix_suggestion": "string"
+      }
+    ],
+    "issue_counts": {
+      "security_total": "number",
+      "security_critical": "number",
+      "security_high": "number",
+      "security_medium": "number",
+      "security_low": "number",
+      "performance_total": "number",
+      "performance_high": "number",
+      "performance_medium": "number",
+      "performance_low": "number",
+      "style_total": "number"
+    },
+    "top_priorities": [
+      {
+        "rank": "number",
+        "title": "string",
+        "category": "string",
+        "reason": "string"
+      }
+    ]
+  },
+  "example_response": {
+    "overall_score": 0,
+    "summary": "Brief summary of the code review findings",
+    "language_detected": "Programming language detected in the code",
+    "security_issues": [
+      {
+        "title": "Short title of the security issue",
+        "severity": "Critical, High, Medium, or Low",
+        "description": "Detailed description of the vulnerability",
+        "line_reference": "Line number or code snippet reference",
+        "fix_suggestion": "Suggested fix with corrected code"
+      }
+    ],
+    "performance_issues": [
+      {
+        "title": "Short title of the performance issue",
+        "impact": "High, Medium, or Low impact",
+        "description": "Detailed description of the performance issue",
+        "line_reference": "Line number or code snippet reference",
+        "fix_suggestion": "Suggested optimization with code"
+      }
+    ],
+    "style_issues": [
+      {
+        "title": "Short title of the style issue",
+        "category": "Category like naming, formatting, error-handling, types, imports",
+        "description": "Detailed description of the style violation",
+        "line_reference": "Line number or code snippet reference",
+        "fix_suggestion": "Suggested improvement with corrected code"
+      }
+    ],
+    "issue_counts": {
+      "security_total": 0,
+      "security_critical": 0,
+      "security_high": 0,
+      "security_medium": 0,
+      "security_low": 0,
+      "performance_total": 0,
+      "performance_high": 0,
+      "performance_medium": 0,
+      "performance_low": 0,
+      "style_total": 0
+    },
+    "top_priorities": [
+      {
+        "rank": 0,
+        "title": "Title of the priority issue",
+        "category": "security, performance, or style",
+        "reason": "Why this should be addressed first"
+      }
+    ]
+  }
+}

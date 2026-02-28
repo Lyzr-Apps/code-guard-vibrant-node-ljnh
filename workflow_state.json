@@ -1,0 +1,9 @@
+{
+  "agents": {
+    "code_review_agent": {
+      "agent_id": "69a2854ca96eb35aa78a9ccd",
+      "name": "CodeGuard Code Review Agent",
+      "type": "json"
+    }
+  }
+}

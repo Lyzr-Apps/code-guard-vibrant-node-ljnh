@@ -1,0 +1,32 @@
+{
+  "nodes": [
+    {
+      "id": "input_node",
+      "type": "Input",
+      "label": "Code/PR Diff Input",
+      "nodeCategory": "input"
+    },
+    {
+      "id": "code_review_agent",
+      "type": "Agent",
+      "label": "CodeGuard Code Review Agent",
+      "nodeCategory": "agent"
+    },
+    {
+      "id": "output_node",
+      "type": "Output",
+      "label": "Structured Review Results",
+      "nodeCategory": "end"
+    }
+  ],
+  "edges": [
+    {
+      "source": "input_node",
+      "target": "code_review_agent"
+    },
+    {
+      "source": "code_review_agent",
+      "target": "output_node"
+    }
+  ]
+}
